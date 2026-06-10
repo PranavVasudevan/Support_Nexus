@@ -1,0 +1,160 @@
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Production-grade Ticket Classification System
+#  Zero-cost LLM: Gemini Flash 2.0 free tier
+#  Scalable: backend replicas behind a round-robin network
+# ═══════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Postgres ────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: tickets_db
+      POSTGRES_USER: ticketuser
+      POSTGRES_PASSWORD: ticketpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketuser -d tickets_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ── MongoDB (chat event logs) ────────────────────────────────
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: ticket_logs
+    restart: unless-stopped
+
+  # ── Redis (session state + queue) ───────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+
+  # ── Backend (scalable — run multiple replicas with --scale backend=N)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"   # ports 8000-8004 → up to 5 replicas
+    environment:
+      - POSTGRES_URL=postgresql://ticketuser:ticketpass@postgres:5432/tickets_db
+      - MONGO_URL=mongodb://mongodb:27017/ticket_logs
+      - REDIS_URL=redis://redis:6379
+      # Local LLM via Ollama running on the HOST machine. From inside a
+      # container, host.docker.internal resolves to the host (Docker Desktop on
+      # Windows/Mac; on Linux add an extra_hosts mapping to host-gateway).
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:7b}
+      - OLLAMA_ENABLED=${OLLAMA_ENABLED:-true}
+      - MODEL_PATH=/app/distilbert_models/distilbert_finetuned
+      - ENVIRONMENT=production
+      - MAX_CLASSIFY_CONCURRENCY=50
+      - SESSION_TTL_SECONDS=3600
+      - DISTILBERT_FALLBACK_THRESHOLD=0.70
+      - CONFIDENCE_AUTONOMOUS=0.95
+      - CONFIDENCE_HITL=0.80
+      - MLFLOW_URI=http://mlflow:5000
+      - ENABLE_SCHEDULER=true
+    volumes:
+      - ./models:/app/distilbert_models      # shared model volume — all replicas read same weights
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_started
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    restart: unless-stopped
+    deploy:
+      replicas: 1                   # bump to 2-4 with: docker-compose up --scale backend=4
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+
+  # ── Frontend ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ── MLflow (experiment tracking) ────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.11.0
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    restart: unless-stopped
+
+  # ── Prometheus (metrics scraping) ───────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+    restart: unless-stopped
+
+  # ── Grafana (dashboards) ─────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  model_data:
+  mlflow_data:
+  prometheus_data:
+  grafana_data:

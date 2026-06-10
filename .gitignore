@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+frontend/build/
+
+# Data & models (regenerate with scripts/)
+models/
+data/*.db
+data/app.db
+
+# Logs & scratch
+*.log
+scripts/_smoke_*.py
+
+# Env (keep .env.example, ignore real secrets if you prefer)
+# .env
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/

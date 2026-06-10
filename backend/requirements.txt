@@ -1,0 +1,45 @@
+# ──────────────────────────────────────────────────────────────────────────
+#  CORE API dependencies — everything needed to RUN the backend.
+#  Deliberately excludes torch/transformers so it installs cleanly on
+#  Python 3.13 and on machines without a GPU. The API runs LLM-only
+#  (local Ollama) out of the box; install requirements-ml.txt to enable the
+#  on-prem DistilBERT path (training + local inference).
+#
+#  Versions are unpinned (>=) so the installer picks wheels compatible with
+#  your Python version. Pin them for reproducible production builds.
+# ──────────────────────────────────────────────────────────────────────────
+
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.7.1
+pydantic-settings>=2.2.1
+
+# Databases
+sqlalchemy>=2.0.30
+aiosqlite>=0.20.0          # SQLite async driver (no-Docker local mode)
+asyncpg>=0.29.0            # Postgres async driver (docker-compose mode)
+motor>=3.4.0               # MongoDB (optional)
+
+# Session store (optional — in-memory fallback used when REDIS_URL is blank)
+redis[asyncio]>=5.0.4
+
+# Monitoring
+prometheus-client>=0.20.0
+
+# LLM fallback — local Ollama via REST (httpx); no SDK, no API key required.
+# Install Ollama (https://ollama.com) then: ollama pull qwen2.5:7b
+
+# Similar-ticket detection + screenshot OCR
+numpy>=1.26            # cosine similarity for duplicate detection
+pillow>=10.0           # image handling for OCR
+pytesseract>=0.3.13    # OCR wrapper — needs the Tesseract binary installed:
+#   Windows:  winget install UB-Mannheim.TesseractOCR
+#   macOS:    brew install tesseract   |   Linux: apt install tesseract-ocr
+# Embeddings use the 'nomic-embed-text' Ollama model:  ollama pull nomic-embed-text
+
+# Utils
+python-multipart>=0.0.9
+httpx>=0.27.0
+apscheduler>=3.10.4
+python-dotenv>=1.0.1
+loguru>=0.7.2

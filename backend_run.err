@@ -1,0 +1,12 @@
+INFO:     Started server process [18220]
+INFO:     Waiting for application startup.
+2026-06-10 12:14:31.654 | INFO     | api.main:lifespan:25 - Starting Ticket Classification System…
+2026-06-10 12:14:31.845 | INFO     | db.postgres:init_db:161 - Database initialized (PostgreSQL): postgresql+asyncpg://postgres:postgres@localhost:5432/tickets_db
+2026-06-10 12:14:31.860 | INFO     | db.mongo:init_mongo:20 - MongoDB disabled (no MONGO_URL configured) — event logging is a no-op
+2026-06-10 12:14:31.860 | INFO     | db.redis_session:init_redis:34 - Session store: in-memory (no REDIS_URL configured)
+2026-06-10 12:14:40.759 | INFO     | services.classifier:load:96 - Loading DistilBERT from C:\Users\sanjisuman\Desktop\TICKET_UPS\models\distilbert_finetuned (device=cpu)...
+2026-06-10 12:14:41.078 | INFO     | services.classifier:load:103 - DistilBERT loaded on cpu
+2026-06-10 12:14:41.078 | INFO     | api.main:lifespan:45 - Nightly retrain scheduler disabled (ENABLE_SCHEDULER=false)
+2026-06-10 12:14:41.079 | INFO     | api.main:lifespan:65 - System ready.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
