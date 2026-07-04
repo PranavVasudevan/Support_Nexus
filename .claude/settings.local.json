@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell($env:Path = \"$env:LOCALAPPDATA\\\\Programs\\\\Ollama;$env:Path\"; & ollama list; Write-Output \"--- server check ---\"; try { \\(Invoke-WebRequest -Uri http://localhost:11434/api/version -UseBasicParsing -TimeoutSec 5\\).Content } catch { \"Server not responding: $\\($_.Exception.Message\\)\" })",
-      "WebSearch"
-    ]
-  }
-}

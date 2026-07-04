@@ -118,3 +118,27 @@ desktop.ini
 tmp/
 temp/
 *.tmp
+
+# Local Git internals if accidentally created as folder
+.git/
+
+# PowerShell scripts / temp scripts
+*.ps1
+*.ps2
+
+# Model folders (if large trained models)
+models/
+*.pkl
+*.joblib
+
+# Data files (if generated / large)
+data/
+*.csv
+*.parquet
+
+# Logs
+*.out
+*.err
+
+# Misc
+*.bak
